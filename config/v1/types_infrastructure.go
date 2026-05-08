@@ -1620,6 +1620,64 @@ type VSpherePlatformSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self.all(x, self.exists_one(y, x == y))"
 	// +optional
 	MachineNetworks []CIDR `json:"machineNetworks"`
+
+	// credentialsMode determines whether components use a shared vCenter account (Passthrough)
+	// or per-component accounts (PerComponent). Defaults to Passthrough when unset.
+	// +kubebuilder:validation:Enum="";PerComponent
+	// +optional
+	CredentialsMode VSphereCredentialsMode `json:"credentialsMode,omitempty"`
+
+	// componentCredentials holds per-component secret references used when credentialsMode is PerComponent.
+	// Ignored when credentialsMode is Passthrough.
+	// +optional
+	ComponentCredentials *VSphereComponentCredentials `json:"componentCredentials,omitempty"`
+}
+
+// VSphereCredentialsMode defines the credential sharing strategy for vSphere components.
+// The empty string is the zero value and is treated identically to Passthrough.
+// +kubebuilder:validation:Enum="";PerComponent
+type VSphereCredentialsMode string
+
+const (
+	// VSphereCredentialsModePassthrough means all components share a single vCenter account.
+	// The empty-string zero value is treated as Passthrough to preserve backward compatibility.
+	VSphereCredentialsModePassthrough VSphereCredentialsMode = ""
+
+	// VSphereCredentialsModePerComponent means each component uses its own dedicated vCenter account
+	// sourced from the secret referenced in ComponentCredentials.
+	VSphereCredentialsModePerComponent VSphereCredentialsMode = "PerComponent"
+)
+
+// VSphereComponentCredentials holds optional per-component secret references for vSphere credentials.
+// Each field is a pointer to a VSphereComponentSecretRef; a nil field means that component falls back
+// to the shared credential.
+type VSphereComponentCredentials struct {
+	// machineAPI references the secret containing vCenter credentials for the Machine API operator.
+	// +optional
+	MachineAPI *VSphereComponentSecretRef `json:"machineAPI,omitempty"`
+
+	// csiDriver references the secret containing vCenter credentials for the CSI driver.
+	// +optional
+	CSIDriver *VSphereComponentSecretRef `json:"csiDriver,omitempty"`
+
+	// cloudController references the secret containing vCenter credentials for the Cloud Controller Manager.
+	// +optional
+	CloudController *VSphereComponentSecretRef `json:"cloudController,omitempty"`
+
+	// vsphereProblemDetector references the secret containing vCenter credentials for the vSphere Problem Detector.
+	// +optional
+	VSphereProblemDetector *VSphereComponentSecretRef `json:"vsphereProblemDetector,omitempty"`
+}
+
+// VSphereComponentSecretRef identifies a Kubernetes secret by name and namespace.
+type VSphereComponentSecretRef struct {
+	// name is the name of the secret.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// namespace is the namespace of the secret.
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
 }
 
 // VSpherePlatformStatus holds the current status of the vSphere infrastructure provider.
